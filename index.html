@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Rock Paper Scissors</title>
+	<style>
+		:root {
+			--bg: #f7efe5;
+			--panel: #fffaf2;
+			--ink: #1f2933;
+			--muted: #61707d;
+			--accent: #d95532;
+			--accent-dark: #a83b24;
+			--line: #e4d4c2;
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		body {
+			margin: 0;
+			min-height: 100vh;
+			font-family: Georgia, "Times New Roman", serif;
+			color: var(--ink);
+			background:
+				linear-gradient(135deg, rgba(217, 85, 50, 0.16), transparent 36%),
+				repeating-linear-gradient(0deg, rgba(31, 41, 51, 0.035), rgba(31, 41, 51, 0.035) 1px, transparent 1px, transparent 32px),
+				var(--bg);
+			display: grid;
+			place-items: center;
+			padding: 24px;
+		}
+
+		main {
+			width: min(720px, 100%);
+			background: var(--panel);
+			border: 1px solid var(--line);
+			border-radius: 8px;
+			box-shadow: 0 18px 50px rgba(66, 44, 28, 0.16);
+			padding: clamp(24px, 6vw, 48px);
+		}
+
+		h1 {
+			margin: 0 0 10px;
+			font-size: clamp(2rem, 7vw, 4.5rem);
+			line-height: 0.95;
+			letter-spacing: 0;
+		}
+
+		p {
+			margin: 0;
+			color: var(--muted);
+			font-size: 1.05rem;
+		}
+
+		.choices {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 12px;
+			margin: 32px 0;
+		}
+
+		button {
+			min-height: 84px;
+			border: 1px solid var(--line);
+			border-radius: 8px;
+			background: #fff;
+			color: var(--ink);
+			font: inherit;
+			font-size: clamp(1rem, 3vw, 1.25rem);
+			cursor: pointer;
+			transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+		}
+
+		button:hover,
+		button:focus-visible {
+			border-color: var(--accent);
+			box-shadow: 0 8px 24px rgba(217, 85, 50, 0.18);
+			transform: translateY(-2px);
+			outline: none;
+		}
+
+		button:disabled {
+			cursor: not-allowed;
+			opacity: 0.55;
+			transform: none;
+		}
+
+		.result {
+			border-top: 1px solid var(--line);
+			padding-top: 24px;
+			min-height: 120px;
+		}
+
+		.result strong {
+			display: block;
+			font-size: clamp(1.5rem, 5vw, 2.4rem);
+			color: var(--accent-dark);
+			margin-bottom: 12px;
+		}
+
+		.moves {
+			display: grid;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 12px;
+		}
+
+		.move {
+			background: #fff;
+			border: 1px solid var(--line);
+			border-radius: 8px;
+			padding: 14px;
+		}
+
+		.move span {
+			display: block;
+			color: var(--muted);
+			font-size: 0.9rem;
+			margin-bottom: 4px;
+		}
+
+		.actions {
+			display: grid;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 12px;
+			margin-top: 20px;
+		}
+
+		.actions button {
+			min-height: 58px;
+			font-size: 1rem;
+		}
+
+		.actions .exit {
+			background: var(--accent-dark);
+			border-color: var(--accent-dark);
+			color: #fff;
+		}
+
+		@media (max-width: 560px) {
+			.choices,
+			.moves,
+			.actions {
+				grid-template-columns: 1fr;
+			}
+		}
+	</style>
+</head>
+<body>
+	<main>
+		<h1>Rock Paper Scissors</h1>
+		<p>Pick one move and let Python choose the opponent move.</p>
+
+		<section class="choices" aria-label="Choose your move">
+			<button type="button" data-choice="rock">Rock</button>
+			<button type="button" data-choice="paper">Paper</button>
+			<button type="button" data-choice="scissors">Scissors</button>
+		</section>
+
+		<section class="result" id="result" aria-live="polite">
+			<strong>Make your move.</strong>
+			<p>Your result will appear here.</p>
+		</section>
+
+		<section class="actions" aria-label="Game actions">
+			<button type="button" id="play-game">Play Game</button>
+			<button type="button" class="exit" id="exit-game">Exit</button>
+		</section>
+	</main>
+
+	<script>
+		const result = document.querySelector("#result");
+		const buttons = document.querySelectorAll("button[data-choice]");
+		const playGameButton = document.querySelector("#play-game");
+		const exitGameButton = document.querySelector("#exit-game");
+
+		function titleCase(value) {
+			return value.charAt(0).toUpperCase() + value.slice(1);
+		}
+
+		async function play(choice) {
+			result.innerHTML = "<strong>Playing...</strong><p>Python is choosing a move.</p>";
+			setChoiceButtons(false);
+
+			try {
+				const response = await fetch("/play", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ choice })
+				});
+
+				const data = await response.json();
+				if (!response.ok) {
+					throw new Error(data.error || "Something went wrong.");
+				}
+
+				result.innerHTML = `
+					<strong>${data.message}</strong>
+					<div class="moves">
+						<div class="move"><span>You chose</span>${titleCase(data.user_choice)}</div>
+						<div class="move"><span>Computer chose</span>${titleCase(data.computer_choice)}</div>
+					</div>
+				`;
+			} catch (error) {
+				result.innerHTML = `<strong>Unable to play.</strong><p>${error.message}</p>`;
+			}
+		}
+
+		function setChoiceButtons(disabled) {
+			buttons.forEach((button) => {
+				button.disabled = disabled;
+			});
+		}
+
+		function resetGame() {
+			result.innerHTML = "<strong>Make your move.</strong><p>Your result will appear here.</p>";
+			setChoiceButtons(false);
+			exitGameButton.disabled = false;
+		}
+
+		function exitGame() {
+			result.innerHTML = "<strong>Game exited.</strong><p>Click Play Game if you want to start again.</p>";
+			setChoiceButtons(true);
+			exitGameButton.disabled = true;
+		}
+
+		buttons.forEach((button) => {
+			button.addEventListener("click", () => play(button.dataset.choice));
+		});
+
+		playGameButton.addEventListener("click", resetGame);
+		exitGameButton.addEventListener("click", exitGame);
+	</script>
+</body>
+</html>
