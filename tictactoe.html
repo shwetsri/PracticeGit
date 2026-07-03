@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Tic Tac Toe</title>
+	<style>
+		:root {
+			--ink: #1e1f24;
+			--paper: #fffaf0;
+			--accent: #d84f31;
+			--accent-dark: #9f311f;
+			--grid: #2f6f73;
+			--panel: #ffffff;
+			--muted: #65615a;
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		body {
+			min-height: 100vh;
+			margin: 0;
+			display: grid;
+			place-items: center;
+			font-family: Georgia, "Times New Roman", serif;
+			color: var(--ink);
+			background:
+				linear-gradient(135deg, rgba(47, 111, 115, 0.18), transparent 36%),
+				radial-gradient(circle at 20% 15%, rgba(216, 79, 49, 0.16), transparent 25%),
+				var(--paper);
+		}
+
+		main {
+			width: min(92vw, 520px);
+			padding: 28px;
+			border: 3px solid var(--ink);
+			background: var(--panel);
+			box-shadow: 10px 10px 0 var(--grid);
+		}
+
+		h1 {
+			margin: 0 0 8px;
+			font-size: clamp(2rem, 7vw, 4rem);
+			line-height: 0.95;
+		}
+
+		p {
+			margin: 0;
+			color: var(--muted);
+		}
+
+		.scorebar {
+			display: flex;
+			justify-content: space-between;
+			gap: 10px;
+			margin: 24px 0;
+			font-weight: 700;
+		}
+
+		.scorebar span {
+			flex: 1;
+			padding: 10px;
+			border: 2px solid var(--ink);
+			text-align: center;
+			background: #f5e7c8;
+		}
+
+		.board {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 10px;
+			aspect-ratio: 1;
+			margin: 0 auto 22px;
+		}
+
+		.cell {
+			border: 3px solid var(--ink);
+			background: #f8f1dc;
+			color: var(--grid);
+			font: 700 clamp(2.8rem, 15vw, 5.5rem) / 1 Georgia, "Times New Roman", serif;
+			cursor: pointer;
+			transition: transform 120ms ease, background 120ms ease;
+		}
+
+		.cell:hover:not(:disabled) {
+			background: #ffe4a9;
+			transform: translateY(-2px);
+		}
+
+		.cell:disabled {
+			cursor: default;
+		}
+
+		.cell.o {
+			color: var(--accent);
+		}
+
+		.status {
+			min-height: 48px;
+			padding: 12px 14px;
+			border-left: 6px solid var(--accent);
+			background: #fff4d6;
+			font-weight: 700;
+		}
+
+		.actions {
+			display: flex;
+			gap: 12px;
+			margin-top: 20px;
+		}
+
+		button.action {
+			flex: 1;
+			padding: 12px 14px;
+			border: 2px solid var(--ink);
+			background: var(--accent);
+			color: white;
+			font: 700 1rem Georgia, "Times New Roman", serif;
+			cursor: pointer;
+		}
+
+		button.action.secondary {
+			background: var(--grid);
+		}
+
+		button.action:hover {
+			background: var(--accent-dark);
+		}
+
+		button.action.secondary:hover {
+			background: #224f52;
+		}
+
+		@media (max-width: 480px) {
+			main {
+				padding: 20px;
+				box-shadow: 6px 6px 0 var(--grid);
+			}
+
+			.scorebar,
+			.actions {
+				flex-direction: column;
+			}
+		}
+	</style>
+</head>
+<body>
+	<main>
+		<h1>Tic Tac Toe</h1>
+		<p>You are X. The computer is O.</p>
+
+		<section class="scorebar" aria-label="Score">
+			<span id="userScore">You: 0</span>
+			<span id="tieScore">Ties: 0</span>
+			<span id="computerScore">Computer: 0</span>
+		</section>
+
+		<section class="board" aria-label="Tic Tac Toe board" id="board"></section>
+
+		<div class="status" id="status" role="status">Your move.</div>
+
+		<section class="actions" aria-label="Game actions">
+			<button class="action" id="newGameButton" type="button">New Game</button>
+			<button class="action secondary" id="exitButton" type="button">Exit</button>
+		</section>
+	</main>
+
+	<script>
+		const boardElement = document.getElementById("board");
+		const statusElement = document.getElementById("status");
+		const newGameButton = document.getElementById("newGameButton");
+		const exitButton = document.getElementById("exitButton");
+		const userScore = document.getElementById("userScore");
+		const tieScore = document.getElementById("tieScore");
+		const computerScore = document.getElementById("computerScore");
+
+		let board = Array(9).fill("");
+		let gameOver = false;
+		let scores = {
+			X: 0,
+			O: 0,
+			tie: 0,
+		};
+
+		function renderBoard() {
+			boardElement.innerHTML = "";
+
+			board.forEach((cell, index) => {
+				const button = document.createElement("button");
+				button.className = `cell ${cell === "O" ? "o" : ""}`;
+				button.type = "button";
+				button.textContent = cell;
+				button.setAttribute("aria-label", cell ? `Square ${index + 1}, ${cell}` : `Square ${index + 1}, empty`);
+				button.disabled = gameOver || Boolean(cell);
+				button.addEventListener("click", () => playMove(index));
+				boardElement.appendChild(button);
+			});
+		}
+
+		function updateScores() {
+			userScore.textContent = `You: ${scores.X}`;
+			tieScore.textContent = `Ties: ${scores.tie}`;
+			computerScore.textContent = `Computer: ${scores.O}`;
+		}
+
+		async function playMove(move) {
+			if (gameOver || board[move]) {
+				return;
+			}
+
+			statusElement.textContent = "Computer is thinking...";
+
+			try {
+				const response = await fetch("/play", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ board, move }),
+				});
+
+				const result = await response.json();
+				if (!response.ok) {
+					throw new Error(result.error || "Unable to play this move.");
+				}
+
+				board = result.board;
+				gameOver = Boolean(result.winner);
+				statusElement.textContent = result.message;
+
+				if (result.winner) {
+					scores[result.winner] += 1;
+					updateScores();
+				}
+
+				renderBoard();
+			} catch (error) {
+				statusElement.textContent = error.message;
+			}
+		}
+
+		function startNewGame() {
+			board = Array(9).fill("");
+			gameOver = false;
+			statusElement.textContent = "Your move.";
+			renderBoard();
+		}
+
+		newGameButton.addEventListener("click", startNewGame);
+		exitButton.addEventListener("click", () => {
+			statusElement.textContent = "Thanks for playing.";
+			gameOver = true;
+			renderBoard();
+		});
+
+		updateScores();
+		renderBoard();
+	</script>
+</body>
+</html>
