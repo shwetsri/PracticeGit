@@ -14,9 +14,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-      - name: Add triage label
+      - name: Add documentation label
         env:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
             ISSUE_NUMBER: ${{ github.event.issue.number }}
-            LABEL: "triage"
+            LABEL: "documentation"
         run: gh issue edit "$ISSUE_NUMBER" --add-label "$LABEL"
