@@ -205,40 +205,113 @@
 			computerScore.textContent = `Computer: ${scores.O}`;
 		}
 
-		async function playMove(move) {
-			if (gameOver || board[move]) {
+		function checkWinner(currentBoard) {
+			for (const [a, b, c] of winningLines) {
+				if (
+					currentBoard[a] &&
+					currentBoard[a] === currentBoard[b] &&
+					currentBoard[a] === currentBoard[c]
+				) {
+					return currentBoard[a];
+				}
+			}
+
+			return null;
+		}
+
+		function isBoardFull(currentBoard) {
+			return currentBoard.every((cell) => cell !== "");
+		}
+
+		function getComputerMove(currentBoard) {
+			const emptyIndices = currentBoard
+				.map((cell, index) => (cell === "" ? index : null))
+				.filter((index) => index !== null);
+
+			const simulateWinOrBlock = (symbol) => {
+				for (const index of emptyIndices) {
+					const nextBoard = [...currentBoard];
+					nextBoard[index] = symbol;
+					if (checkWinner(nextBoard) === symbol) {
+						return index;
+					}
+				}
+				return null;
+			};
+
+			const winIndex = simulateWinOrBlock(COMPUTER);
+			if (winIndex !== null) {
+				return winIndex;
+			}
+
+			const blockIndex = simulateWinOrBlock(PLAYER);
+			if (blockIndex !== null) {
+				return blockIndex;
+			}
+
+			if (emptyIndices.includes(4)) {
+				return 4;
+			}
+
+			const cornerIndices = [0, 2, 6, 8].filter((index) => emptyIndices.includes(index));
+			if (cornerIndices.length) {
+				return cornerIndices[Math.floor(Math.random() * cornerIndices.length)];
+			}
+
+			return emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+		}
+
+		function playMove(index) {
+			if (gameOver || board[index]) {
+				return;
+			}
+
+			board[index] = PLAYER;
+			renderBoard();
+
+			let winner = checkWinner(board);
+			if (winner) {
+				gameOver = true;
+				scores[winner] += 1;
+				statusElement.textContent = "You win!";
+				updateScores();
+				return;
+			}
+
+			if (isBoardFull(board)) {
+				gameOver = true;
+				scores.tie += 1;
+				statusElement.textContent = "It's a tie.";
+				updateScores();
 				return;
 			}
 
 			statusElement.textContent = "Computer is thinking...";
 
-			try {
-				const response = await fetch("/play", {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({ board, move }),
-				});
-
-				const result = await response.json();
-				if (!response.ok) {
-					throw new Error(result.error || "Unable to play this move.");
-				}
-
-				board = result.board;
-				gameOver = Boolean(result.winner);
-				statusElement.textContent = result.message;
-
-				if (result.winner) {
-					scores[result.winner] += 1;
-					updateScores();
-				}
-
+			setTimeout(() => {
+				const computerIndex = getComputerMove(board);
+				board[computerIndex] = COMPUTER;
 				renderBoard();
-			} catch (error) {
-				statusElement.textContent = error.message;
-			}
+
+				winner = checkWinner(board);
+				if (winner) {
+					gameOver = true;
+					scores[winner] += 1;
+					statusElement.textContent = "Computer wins!";
+					updateScores();
+					return;
+				}
+
+				if (isBoardFull(board)) {
+					gameOver = true;
+					scores.tie += 1;
+					statusElement.textContent = "It's a tie.";
+					updateScores();
+					return;
+				}
+
+				statusElement.textContent = "Your move.";
+			}, 250);
 		}
 
 		function startNewGame() {
