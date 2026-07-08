@@ -172,67 +172,90 @@
 	</main>
 
 	<script>
-		const result = document.querySelector("#result");
-		const buttons = document.querySelectorAll("button[data-choice]");
-		const playGameButton = document.querySelector("#play-game");
-		const exitGameButton = document.querySelector("#exit-game");
+    const result = document.querySelector("#result");
+    const buttons = document.querySelectorAll("button[data-choice]");
+    const playGameButton = document.querySelector("#play-game");
+    const exitGameButton = document.querySelector("#exit-game");
 
-		function titleCase(value) {
-			return value.charAt(0).toUpperCase() + value.slice(1);
-		}
+    const choices = ["rock", "paper", "scissors"];
 
-		async function play(choice) {
-			result.innerHTML = "<strong>Playing...</strong><p>Python is choosing a move.</p>";
-			setChoiceButtons(false);
+    function titleCase(value) {
+        return value.charAt(0).toUpperCase() + value.slice(1);
+    }
 
-			try {
-				const response = await fetch("/play", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ choice })
-				});
+    function getWinner(userChoice, computerChoice) {
+        if (userChoice === computerChoice) {
+            return "It's a Draw!";
+        }
 
-				const data = await response.json();
-				if (!response.ok) {
-					throw new Error(data.error || "Something went wrong.");
-				}
+        if (
+            (userChoice === "rock" && computerChoice === "scissors") ||
+            (userChoice === "paper" && computerChoice === "rock") ||
+            (userChoice === "scissors" && computerChoice === "paper")
+        ) {
+            return "You Win!";
+        }
 
-				result.innerHTML = `
-					<strong>${data.message}</strong>
-					<div class="moves">
-						<div class="move"><span>You chose</span>${titleCase(data.user_choice)}</div>
-						<div class="move"><span>Computer chose</span>${titleCase(data.computer_choice)}</div>
-					</div>
-				`;
-			} catch (error) {
-				result.innerHTML = `<strong>Unable to play.</strong><p>${error.message}</p>`;
-			}
-		}
+        return "Computer Wins!";
+    }
 
-		function setChoiceButtons(disabled) {
-			buttons.forEach((button) => {
-				button.disabled = disabled;
-			});
-		}
+    function play(choice) {
+        result.innerHTML =
+            "<strong>Playing...</strong><p>Computer is choosing a move.</p>";
 
-		function resetGame() {
-			result.innerHTML = "<strong>Make your move.</strong><p>Your result will appear here.</p>";
-			setChoiceButtons(false);
-			exitGameButton.disabled = false;
-		}
+        const computerChoice =
+            choices[Math.floor(Math.random() * choices.length)];
 
-		function exitGame() {
-			result.innerHTML = "<strong>Game exited.</strong><p>Click Play Game if you want to start again.</p>";
-			setChoiceButtons(true);
-			exitGameButton.disabled = true;
-		}
+        const message = getWinner(choice, computerChoice);
 
-		buttons.forEach((button) => {
-			button.addEventListener("click", () => play(button.dataset.choice));
-		});
+        result.innerHTML = `
+            <strong>${message}</strong>
+            <div class="moves">
+                <div class="move">
+                    <span>You chose</span>
+                    ${titleCase(choice)}
+                </div>
+                <div class="move">
+                    <span>Computer chose</span>
+                    ${titleCase(computerChoice)}
+                </div>
+            </div>
+        `;
+    }
 
-		playGameButton.addEventListener("click", resetGame);
-		exitGameButton.addEventListener("click", exitGame);
-	</script>
+    function setChoiceButtons(disabled) {
+        buttons.forEach((button) => {
+            button.disabled = disabled;
+        });
+    }
+
+    function resetGame() {
+        result.innerHTML =
+            "<strong>Make your move.</strong><p>Your result will appear here.</p>";
+
+        setChoiceButtons(false);
+        exitGameButton.disabled = false;
+    }
+
+    function exitGame() {
+        result.innerHTML =
+            "<strong>Game exited.</strong><p>Click Play Game if you want to start again.</p>";
+
+        setChoiceButtons(true);
+        exitGameButton.disabled = true;
+    }
+
+    buttons.forEach((button) => {
+        button.addEventListener("click", () => {
+            play(button.dataset.choice);
+        });
+    });
+
+    playGameButton.addEventListener("click", resetGame);
+    exitGameButton.addEventListener("click", exitGame);
+
+    resetGame();
+</script>
+		
 </body>
 </html>
